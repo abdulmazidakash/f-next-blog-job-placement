@@ -77,7 +77,7 @@ export default function Header() {
           {theme === 'light' ? <FaSun /> : <FaMoon />}
         </Button>
 
-        {/* <SignedIn>
+        <SignedIn>
           <UserButton
             appearance={{
               baseTheme: theme === 'light' ? light : dark,
@@ -87,11 +87,11 @@ export default function Header() {
         </SignedIn>
         <SignedOut>
           <Link href="/sign-in">
-            <Button gradientDuoTone="purpleToBlue" outline>
+            <Button className="bg-gradient-to-r from-teal-200 to-lime-200 text-gray-900 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-lime-200 dark:focus:ring-teal-700">
               Sign In
             </Button>
           </Link>
-        </SignedOut> */}
+        </SignedOut>
 
         <NavbarToggle />
       </div>
