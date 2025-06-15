@@ -9,7 +9,6 @@ import { useRouter } from 'next/navigation';
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 // https://dev.to/a7u/reactquill-with-nextjs-478b
 import 'react-quill-new/dist/quill.snow.css';
-import 'react-circular-progressbar/dist/styles.css';
 
 export default function CreatePostPage() {
   const { isSignedIn, user, isLoaded } = useUser();
@@ -20,7 +19,7 @@ export default function CreatePostPage() {
   const [formData, setFormData] = useState({});
   const [publishError, setPublishError] = useState(null);
   const router = useRouter();
-  console.log(formData);
+  console.log('form data--->',formData);
 
 	const handleUploadImage = async () => {
 	try {
@@ -119,14 +118,13 @@ export default function CreatePostPage() {
               <option value='nextjs'>Next.js</option>
             </Select>
           </div>
-          <div className='flex gap-4 items-center justify-between border-4 border-teal-500 border-dotted p-3'>
+          <div className='flex gap-4 items-center justify-evenly border-4 border-teal-500 border-dotted p-3'>
             <FileInput
               type='file'
               accept='image/*'
               onChange={(e) => setFile(e.target.files[0])}
             />
 			<Button
-				type='button'
 				className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-2 rounded"
 				
 				onClick={handleUploadImage}
