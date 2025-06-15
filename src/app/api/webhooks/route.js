@@ -4,29 +4,38 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { createOrUpdateUser, deleteUser } from '@/lib/actions/user';
 
 export async function POST(req) {
-  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SIGNING_SECRET; // ✅ Correct name
+  // You can find this in the Clerk Dashboard -> Webhooks -> choose the endpoint
+  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
     throw new Error(
-      'Missing CLERK_WEBHOOK_SIGNING_SECRET in .env.local'
+      'Please add WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local'
     );
   }
 
-  // ✅ 1. get raw body for svix
-  const body = await req.text();
+  // Get the headers
   const headerPayload = headers();
-
   const svix_id = headerPayload.get('svix-id');
   const svix_timestamp = headerPayload.get('svix-timestamp');
   const svix_signature = headerPayload.get('svix-signature');
 
+  // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response('Missing svix headers', { status: 400 });
+    return new Response('Error occured -- no svix headers', {
+      status: 400,
+    });
   }
 
+  // Get the body
+  const payload = await req.json();
+  const body = JSON.stringify(payload);
+
+  // Create a new Svix instance with your secret.
   const wh = new Webhook(WEBHOOK_SECRET);
 
   let evt;
+
+  // Verify the payload with the headers
   try {
     evt = wh.verify(body, {
       'svix-id': svix_id,
@@ -35,47 +44,61 @@ export async function POST(req) {
     });
   } catch (err) {
     console.error('Error verifying webhook:', err);
-    return new Response('Error verifying', { status: 400 });
+    return new Response('Error occured', {
+      status: 400,
+    });
   }
 
+  // Do something with the payload
+  // For this guide, you simply log the payload to the console
+  const { id } = evt?.data;
   const eventType = evt?.type;
-  const payload = evt?.data;
-
-  console.log(`Webhook: ${eventType} for ID ${payload.id}`);
+  console.log(`Webhook with and ID of ${id} and type of ${eventType}`);
+  console.log('Webhook body:', body);
 
   if (eventType === 'user.created' || eventType === 'user.updated') {
+    const { id, first_name, last_name, image_url, email_address, userName } =
+      evt?.data;
     try {
       const user = await createOrUpdateUser(
-        payload.id,
-        payload.first_name,
-        payload.last_name,
-        payload.image_url,
-        payload.email_addresses[0].email_address, // ✅ plural + first item
-        payload.username // ✅ check Clerk docs: it's `username` not `userName`
+        id,
+        first_name,
+        last_name,
+        image_url,
+        email_address,
+        userName
       );
-
       if (user && eventType === 'user.created') {
-        await clerkClient.users.updateUserMetadata(payload.id, {
-          publicMetadata: {
-            userMongoId: user._id,
-            isAdmin: user.isAdmin,
-          },
-        });
+        try {
+          await clerkClient.users.updateUserMetadata(id, {
+            publicMetadata: {
+              userMongoId: user._id,
+              isAdmin: user.isAdmin,
+            },
+          });
+        } catch (error) {
+          console.log('Error updating user metadata:', error);
+        }
       }
-    } catch (err) {
-      console.error('Error saving user:', err);
-      return new Response('Error saving user', { status: 500 });
+    } catch (error) {
+      console.log('Error creating or updating user:', error);
+      return new Response('Error occured', {
+        status: 400,
+      });
     }
   }
 
   if (eventType === 'user.deleted') {
+    const { id } = evt?.data;
     try {
-      await deleteUser(payload.id);
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      return new Response('Error deleting user', { status: 500 });
+      await deleteUser(id);
+    } catch (error) {
+      console.log('Error deleting user:', error);
+      return new Response('Error occured', {
+        status: 400,
+      });
     }
   }
 
-  return new Response('OK', { status: 200 });
+  return new Response('', { status: 200 });
 }
